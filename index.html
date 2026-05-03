@@ -542,9 +542,9 @@ function initSender() {
 
   peer = new Peer({ debug: 0 });
 
-  peer.on('open', id => {
+  peer.on('open', async id => {
     log('Peer ID 取得: ' + id, 'ok');
-    buildQR(id);
+    await buildQR(id);
     setStatus('接続待ち');
   });
 
@@ -584,11 +584,32 @@ function initSender() {
   $('clearBtn').addEventListener('click', () => { queue = []; $('fileList').innerHTML = ''; updateSendBtn(); log('リストをクリア'); });
 }
 
-function buildQR(peerId) {
-  const url = location.origin + location.pathname + '?recv&id=' + peerId;
-  $('urlTag').textContent = url;
-  new QRCode('qrcode', { text: url, width: 160, height: 160, correctLevel: QRCode.CorrectLevel.H });
-  log('QR生成完了: ' + url);
+async function buildQR(peerId) {
+  const longUrl = location.origin + location.pathname + '?recv&id=' + peerId;
+  let qrUrl = longUrl;
+
+  // TinyURLで短縮を試みる
+  try {
+    const res = await fetch('https://tinyurl.com/api-create.php?url=' + encodeURIComponent(longUrl));
+    if (res.ok) {
+      const short = await res.text();
+      if (short.startsWith('http')) {
+        qrUrl = short;
+        log('短縮URL: ' + short);
+      }
+    }
+  } catch (e) {
+    log('短縮失敗、元URLを使用', 'warn');
+  }
+
+  $('urlTag').textContent = qrUrl;
+  new QRCode('qrcode', { 
+    text: qrUrl, 
+    width: 160, 
+    height: 160, 
+    correctLevel: QRCode.CorrectLevel.H 
+  });
+  log('QR生成: ' + qrUrl);
 }
 
 function stepDone(id)   { $(id).className = 'step done';   $(id).querySelector('.step-n').textContent = '✓'; }
