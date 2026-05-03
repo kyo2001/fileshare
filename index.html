@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LocalBeam</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Familjen+Grotesk:wght@400;600;700&display=swap');
+
+:root {
+  --bg:       #f5f2eb;
+  --surface:  #ede9e0;
+  --surface2: #e3ddd1;
+  --ink:      #1a1710;
+  --muted:    #8a8578;
+  --border:   #d0c9bb;
+  --accent:   #d4500a;
+  --accent2:  #1a6b4a;
+  --blue:     #1a4a8a;
+  --warn:     #c8960a;
+  --radius:   12px;
+  --mono:     'DM Mono', monospace;
+  --sans:     'Familjen Grotesk', sans-serif;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--sans);
+  min-height: 100vh;
+  font-size: 15px;
+}
+
+/* Subtle paper texture */
+body::before {
+  content:'';
+  position: fixed; inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+  pointer-events: none; z-index:0;
+}
+
+.wrap { position:relative; z-index:1; max-width:860px; margin:0 auto; padding:0 1.25rem 4rem; }
+
+/* ── Header ── */
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 2rem 0 2.5rem;
+  border-bottom: 2px solid var(--ink);
+  margin-bottom: 2.5rem;
+}
+
+.logo {
+  display: flex; align-items: center; gap: 0.6rem;
+}
+
+.logo-mark {
+  width: 38px; height: 38px;
+  background: var(--ink);
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.2rem;
+  flex-shrink: 0;
+}
+
+.logo-name {
+  font-size: 1.4rem;
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  color: var(--ink);
+}
+
+.logo-tag {
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  color: var(--muted);
+  letter-spacing: 0.05em;
+  margin-top: 1px;
+}
+
+/* Status badge */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.35rem 0.875rem;
+  border: 1.5px solid var(--border);
+  border-radius: 999px;
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  color: var(--muted);
+  background: var(--surface);
+  transition: all 0.3s;
+}
+.badge.ok  { border-color: var(--accent2); color: var(--accent2); background: #e8f5f0; }
+.badge.err { border-color: var(--accent);  color: var(--accent);  background: #fdf0ea; }
+
+.dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
+}
+.badge.ok .dot { animation: blink 2s infinite; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+/* ── Panel ── */
+.panel {
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  margin-bottom: 1.25rem;
+  overflow: hidden;
+  transition: border-color 0.25s, box-shadow 0.25s;
+}
+.panel:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(212,80,10,0.08); }
+
+.panel-head {
+  padding: 1rem 1.25rem;
+  border-bottom: 1.5px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+}
+
+.panel-label {
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.panel-body { padding: 1.375rem 1.25rem; }
+
+/* ── QR block ── */
+.qr-layout {
+  display: flex; gap: 2rem; align-items: flex-start; flex-wrap: wrap;
+}
+.qr-frame {
+  background: #fff;
+  padding: 10px;
+  border-radius: 10px;
+  border: 1.5px solid var(--border);
+  flex-shrink: 0;
+  box-shadow: 4px 4px 0 var(--border);
+}
+#qrcode canvas, #qrcode img { display: block; }
+
+.qr-side { flex:1; min-width:200px; }
+
+.qr-heading {
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.3;
+  margin-bottom: 0.6rem;
+}
+
+.qr-desc {
+  font-size: 0.83rem;
+  color: var(--muted);
+  line-height: 1.7;
+  margin-bottom: 1rem;
+}
+
+.url-tag {
+  display: inline-block;
+  padding: 0.4rem 0.75rem;
+  background: var(--surface2);
+  border: 1.5px solid var(--border);
+  border-radius: 7px;
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  color: var(--blue);
+  word-break: break-all;
+  max-width: 100%;
+}
+
+/* Steps */
+.steps { margin-top: 1.1rem; display: flex; flex-direction: column; gap: 0.6rem; }
+.step  { display: flex; align-items: center; gap: 0.75rem; font-size: 0.85rem; color: var(--muted); transition: color 0.3s; }
+.step.active { color: var(--ink); }
+.step.done   { color: var(--accent2); }
+
+.step-n {
+  width: 26px; height: 26px; border-radius: 50%;
+  border: 1.5px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--mono); font-size: 0.68rem;
+  flex-shrink: 0; transition: all 0.3s;
+  background: var(--bg);
+  color: var(--muted);
+}
+.step.active .step-n { border-color: var(--accent); color: var(--accent); background: #fdf0ea; }
+.step.done .step-n   { border-color: var(--accent2); background: var(--accent2); color: #fff; }
+
+/* ── Drop zone ── */
+.drop-zone {
+  border: 2px dashed var(--border);
+  border-radius: 10px;
+  padding: 2.5rem 1.5rem;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: var(--bg);
+  position: relative;
+}
+.drop-zone:hover, .drop-zone.over {
+  border-color: var(--accent);
+  background: #fdf5f1;
+}
+.drop-zone.over::after {
+  content:'';
+  position: absolute; inset: 0;
+  background: rgba(212,80,10,0.04);
+  border-radius: 8px;
+  animation: breathe 0.8s infinite;
+}
+@keyframes breathe { 0%,100%{opacity:0.5} 50%{opacity:1} }
+
+.drop-icon { font-size: 2rem; margin-bottom: 0.6rem; }
+.drop-main { font-weight: 600; font-size: 0.95rem; margin-bottom: 0.25rem; }
+.drop-hint { font-family: var(--mono); font-size: 0.7rem; color: var(--muted); }
+#fileInput { display:none; }
+
+/* ── File list ── */
+.file-list { display: flex; flex-direction: column; gap: 0.6rem; margin-top: 0.875rem; }
+
+.fitem {
+  display: flex; align-items: center; gap: 0.875rem;
+  padding: 0.75rem 0.875rem;
+  background: var(--bg);
+  border: 1.5px solid var(--border);
+  border-radius: 9px;
+  transition: border-color 0.2s;
+}
+
+.fitem-icon { font-size: 1.4rem; flex-shrink: 0; }
+.fitem-info { flex:1; min-width: 0; }
+.fitem-name { font-weight: 600; font-size: 0.875rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fitem-size { font-family: var(--mono); font-size: 0.68rem; color: var(--muted); margin-top: 2px; }
+
+.fitem-bar-wrap { height: 3px; background: var(--border); border-radius: 99px; margin-top: 5px; overflow:hidden; }
+.fitem-bar { height:100%; background: linear-gradient(90deg, var(--accent), var(--warn)); border-radius: 99px; width:0%; transition: width 0.2s; }
+
+.fitem-pct { font-family: var(--mono); font-size: 0.68rem; color: var(--muted); flex-shrink: 0; min-width: 36px; text-align: right; }
+.fitem-pct.done { color: var(--accent2); }
+.fitem-pct.live { color: var(--accent); }
+
+/* ── Buttons ── */
+.btn-row { display: flex; gap: 0.6rem; margin-top: 1.1rem; flex-wrap: wrap; }
+
+.btn {
+  display: inline-flex; align-items: center; gap: 0.4rem;
+  padding: 0.6rem 1.25rem;
+  border-radius: 8px;
+  font-family: var(--sans); font-size: 0.85rem; font-weight: 600;
+  cursor: pointer; border: none; transition: all 0.15s;
+}
+.btn-primary {
+  background: var(--ink); color: #fff;
+  box-shadow: 3px 3px 0 rgba(26,23,16,0.25);
+}
+.btn-primary:hover:not(:disabled) { transform: translate(-1px,-1px); box-shadow: 4px 4px 0 rgba(26,23,16,0.3); }
+.btn-primary:active:not(:disabled) { transform: translate(1px,1px); box-shadow: 1px 1px 0 rgba(26,23,16,0.2); }
+.btn-primary:disabled { opacity:0.35; cursor:not-allowed; }
+
+.btn-ghost {
+  background: var(--surface2); color: var(--muted);
+  border: 1.5px solid var(--border);
+}
+.btn-ghost:hover { color: var(--ink); border-color: var(--ink); }
+
+/* ── Log ── */
+.log {
+  background: var(--ink);
+  border-radius: 8px;
+  padding: 0.875rem 1rem;
+  max-height: 160px;
+  overflow-y: auto;
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  line-height: 1.85;
+  color: #c8c0b0;
+}
+.log-row { display: flex; gap: 0.75rem; }
+.lt { color: #5a5448; flex-shrink:0; }
+.lm.ok   { color: #6dca9a; }
+.lm.warn { color: #e8c060; }
+.lm.err  { color: #e07060; }
+.lm.info { color: #c8c0b0; }
+
+/* ── Receiver ── */
+#receiverUI { display: none; }
+
+.recv-top {
+  text-align: center;
+  padding: 2.5rem 0 2rem;
+}
+.recv-emoji { font-size: 3.5rem; animation: float 3s ease-in-out infinite; display:block; margin-bottom:1rem; }
+@keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-8px)} }
+.recv-title { font-size: 1.75rem; font-weight: 700; letter-spacing: -0.04em; margin-bottom: 0.4rem; }
+.recv-sub { font-family: var(--mono); font-size: 0.75rem; color: var(--muted); }
+
+.recv-incoming {
+  background: var(--surface2);
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  padding: 1rem 1.125rem;
+  margin-bottom: 0.75rem;
+}
+.recv-in-head { display: flex; justify-content: space-between; margin-bottom: 0.5rem; font-size: 0.8rem; }
+.recv-in-name { font-weight: 600; }
+.recv-in-pct  { font-family: var(--mono); color: var(--accent); }
+.recv-in-bar  { height: 4px; background: var(--border); border-radius: 99px; overflow: hidden; }
+.recv-in-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--warn)); width: 0%; transition: width 0.15s; border-radius: 99px; }
+
+.dl-list { display: flex; flex-direction: column; gap: 0.6rem; }
+.dl-item {
+  display: flex; align-items: center; gap: 0.875rem;
+  padding: 0.875rem;
+  background: var(--bg);
+  border: 1.5px solid var(--border);
+  border-radius: 9px;
+  animation: pop 0.25s ease;
+}
+@keyframes pop { from { opacity:0; transform:scale(0.97); } to { opacity:1; transform:scale(1); } }
+
+.dl-icon { font-size: 1.5rem; flex-shrink:0; }
+.dl-info { flex:1; min-width:0; }
+.dl-name { font-weight: 600; font-size: 0.875rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.dl-size { font-family: var(--mono); font-size: 0.68rem; color: var(--muted); margin-top:2px; }
+
+.dl-btn {
+  display: inline-flex; align-items: center; gap: 0.35rem;
+  padding: 0.45rem 0.875rem;
+  background: var(--accent2);
+  color: #fff;
+  border-radius: 7px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-decoration: none;
+  flex-shrink: 0;
+  transition: opacity 0.15s;
+  font-family: var(--sans);
+  box-shadow: 2px 2px 0 rgba(26,107,74,0.3);
+}
+.dl-btn:hover { opacity: 0.85; }
+
+.empty-hint { text-align: center; padding: 2rem 0; font-size: 0.85rem; color: var(--muted); }
+
+/* ── Misc ── */
+.hidden { display: none !important; }
+.mt { margin-top: 0.875rem; }
+
+@media (max-width: 560px) {
+  header { padding: 1.5rem 0 2rem; }
+  .qr-layout { flex-direction: column; }
+  .panel-body { padding: 1rem; }
+  .recv-title { font-size: 1.4rem; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<!-- ── Header ── -->
+<header>
+  <div class="logo">
+    <div class="logo-mark">📡</div>
+    <div>
+      <div class="logo-name">LocalBeam</div>
+      <div class="logo-tag">P2P FILE TRANSFER</div>
+    </div>
+  </div>
+  <div class="badge" id="statusBadge">
+    <span class="dot"></span>
+    <span id="statusTxt">初期化中</span>
+  </div>
+</header>
+
+<!-- ════════════════════════════════
+     SENDER UI (PC / host side)
+════════════════════════════════ -->
+<div id="senderUI">
+
+  <!-- QR / connection panel -->
+  <div class="panel">
+    <div class="panel-head">
+      <span class="panel-label">📱 スマホ接続</span>
+      <span id="peerCount" style="font-family:var(--mono);font-size:0.72rem;color:var(--muted)">0 台接続中</span>
+    </div>
+    <div class="panel-body">
+      <div class="qr-layout">
+        <div class="qr-frame"><div id="qrcode"></div></div>
+        <div class="qr-side">
+          <div class="qr-heading">QRコードを<br>スキャンして接続</div>
+          <div class="qr-desc">スマホのカメラアプリでスキャンするだけ。<br>同じネットワーク不要 — どこからでも接続できます。</div>
+          <div class="url-tag" id="urlTag">URL 生成中…</div>
+          <div class="steps">
+            <div class="step active" id="s1"><div class="step-n">1</div>QRをスキャン</div>
+            <div class="step" id="s2"><div class="step-n">2</div>スマホ側でページが開く</div>
+            <div class="step" id="s3"><div class="step-n">3</div>ファイルを選んで送信</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- File drop panel -->
+  <div class="panel">
+    <div class="panel-head">
+      <span class="panel-label">📂 ファイル送信</span>
+      <span id="sendStatusLabel" style="font-family:var(--mono);font-size:0.72rem;color:var(--muted)">接続待ち</span>
+    </div>
+    <div class="panel-body">
+      <div class="drop-zone" id="dropZone">
+        <div class="drop-icon">🗂</div>
+        <div class="drop-main">ここにファイルをドロップ</div>
+        <div class="drop-hint">または クリックして選択 · 複数可</div>
+        <input type="file" id="fileInput" multiple>
+      </div>
+      <div class="file-list" id="fileList"></div>
+      <div class="btn-row">
+        <button class="btn btn-primary" id="sendBtn" disabled>⚡ 送信開始</button>
+        <button class="btn btn-ghost"   id="clearBtn">クリア</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Log panel -->
+  <div class="panel">
+    <div class="panel-head">
+      <span class="panel-label">🖥 ログ</span>
+      <button class="btn btn-ghost" style="padding:0.25rem 0.7rem;font-size:0.72rem" onclick="clearLog()">クリア</button>
+    </div>
+    <div class="panel-body" style="padding-top:0.5rem;padding-bottom:0.5rem">
+      <div class="log" id="logBox"></div>
+    </div>
+  </div>
+
+</div><!-- /senderUI -->
+
+<!-- ════════════════════════════════
+     RECEIVER UI (smartphone)
+════════════════════════════════ -->
+<div id="receiverUI">
+  <div class="recv-top">
+    <span class="recv-emoji">📲</span>
+    <div class="recv-title">LocalBeam</div>
+    <div class="recv-sub" id="recvSub">PCへ接続中…</div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head">
+      <span class="panel-label">📥 受信ファイル</span>
+      <span id="recvCount" style="font-family:var(--mono);font-size:0.72rem;color:var(--muted)">0 件</span>
+    </div>
+    <div class="panel-body">
+      <!-- Progress bar for incoming file -->
+      <div id="recvIncoming" class="hidden">
+        <div class="recv-incoming">
+          <div class="recv-in-head">
+            <span class="recv-in-name" id="inName">受信中…</span>
+            <span class="recv-in-pct"  id="inPct">0%</span>
+          </div>
+          <div class="recv-in-bar"><div class="recv-in-fill" id="inFill"></div></div>
+        </div>
+      </div>
+      <!-- Completed downloads -->
+      <div class="dl-list" id="dlList"></div>
+      <div class="empty-hint" id="recvEmpty">PCからファイルが届くとここに表示されます</div>
+    </div>
+  </div>
+</div><!-- /receiverUI -->
+
+</div><!-- /wrap -->
+
+<script>
+// ═══════════════════════════════════════════════════════
+//  Constants & helpers
+// ═══════════════════════════════════════════════════════
+const CHUNK = 64 * 1024; // 64 KB
+const $ = id => document.getElementById(id);
+
+const IS_RECV = new URLSearchParams(location.search).has('recv');
+const HOST_ID = new URLSearchParams(location.search).get('id') || null;
+
+function fmtSize(b) {
+  if (b < 1024)       return b + ' B';
+  if (b < 1048576)    return (b/1024).toFixed(1) + ' KB';
+  return (b/1048576).toFixed(2) + ' MB';
+}
+
+function fileIcon(name) {
+  const e = name.split('.').pop().toLowerCase();
+  return {
+    pdf:'📄', jpg:'🖼', jpeg:'🖼', png:'🖼', gif:'🖼', webp:'🖼', svg:'🖼',
+    mp4:'🎬', mov:'🎬', avi:'🎬', mkv:'🎬',
+    mp3:'🎵', wav:'🎵', aac:'🎵', flac:'🎵',
+    zip:'🗜', rar:'🗜', '7z':'🗜', tar:'🗜', gz:'🗜',
+    doc:'📝', docx:'📝', txt:'📝', md:'📝', rtf:'📝',
+    xls:'📊', xlsx:'📊', csv:'📊',
+    ppt:'📋', pptx:'📋',
+    js:'💻',  ts:'💻',  py:'💻',  html:'💻', css:'💻', json:'💻',
+  }[e] || '📦';
+}
+
+function setStatus(txt, type='') {
+  $('statusTxt').textContent = txt;
+  $('statusBadge').className = 'badge' + (type ? ' ' + type : '');
+}
+
+// ═══════════════════════════════════════════════════════
+//  Log (sender only)
+// ═══════════════════════════════════════════════════════
+function log(msg, kind='info') {
+  if (IS_RECV) return;
+  const t = new Date().toLocaleTimeString('ja-JP');
+  const row = document.createElement('div');
+  row.className = 'log-row';
+  row.innerHTML = `<span class="lt">${t}</span><span class="lm ${kind}">${msg}</span>`;
+  $('logBox').appendChild(row);
+  $('logBox').scrollTop = $('logBox').scrollHeight;
+}
+function clearLog() { $('logBox').innerHTML = ''; }
+
+// ═══════════════════════════════════════════════════════
+//  SENDER
+// ═══════════════════════════════════════════════════════
+let peer, conn;
+let queue = []; // {file, domIdx}
+let sending = false;
+
+function initSender() {
+  $('senderUI').style.display = 'block';
+  setStatus('PeerJS 初期化中…');
+  log('送信モードで起動');
+
+  peer = new Peer({ debug: 0 });
+
+  peer.on('open', id => {
+    log('Peer ID 取得: ' + id, 'ok');
+    buildQR(id);
+    setStatus('接続待ち');
+  });
+
+  peer.on('error', e => {
+    log('PeerJS エラー: ' + e.type, 'err');
+    setStatus('エラー: ' + e.type, 'err');
+  });
+
+  peer.on('connection', incoming => {
+    conn = incoming;
+    conn.on('open', () => {
+      log('スマホが接続しました！', 'ok');
+      setStatus('接続済み', 'ok');
+      $('peerCount').textContent = '1 台接続中';
+      $('sendStatusLabel').textContent = '転送可能';
+      stepDone('s1'); stepDone('s2'); stepActive('s3');
+      updateSendBtn();
+    });
+    conn.on('close', () => {
+      log('接続が切断されました', 'warn');
+      setStatus('切断');
+      $('peerCount').textContent = '0 台接続中';
+      $('sendStatusLabel').textContent = '接続待ち';
+      updateSendBtn();
+    });
+    conn.on('error', e => log('接続エラー: ' + e, 'err'));
+  });
+
+  // Drop zone
+  const dz = $('dropZone');
+  dz.addEventListener('click', () => $('fileInput').click());
+  dz.addEventListener('dragover',  e => { e.preventDefault(); dz.classList.add('over'); });
+  dz.addEventListener('dragleave', () => dz.classList.remove('over'));
+  dz.addEventListener('drop', e => { e.preventDefault(); dz.classList.remove('over'); addFiles([...e.dataTransfer.files]); });
+  $('fileInput').addEventListener('change', e => addFiles([...e.target.files]));
+  $('sendBtn').addEventListener('click', startSend);
+  $('clearBtn').addEventListener('click', () => { queue = []; $('fileList').innerHTML = ''; updateSendBtn(); log('リストをクリア'); });
+}
+
+function buildQR(peerId) {
+  const url = location.origin + location.pathname + '?recv&id=' + peerId;
+  $('urlTag').textContent = url;
+  new QRCode('qrcode', { text: url, width: 160, height: 160, correctLevel: QRCode.CorrectLevel.H });
+  log('QR生成完了: ' + url);
+}
+
+function stepDone(id)   { $(id).className = 'step done';   $(id).querySelector('.step-n').textContent = '✓'; }
+function stepActive(id) { $(id).className = 'step active'; }
+
+function addFiles(files) {
+  files.forEach(f => {
+    const idx = queue.length;
+    queue.push({ file: f, idx });
+
+    const el = document.createElement('div');
+    el.className = 'fitem';
+    el.id = 'fi' + idx;
+    el.innerHTML = `
+      <div class="fitem-icon">${fileIcon(f.name)}</div>
+      <div class="fitem-info">
+        <div class="fitem-name">${f.name}</div>
+        <div class="fitem-size">${fmtSize(f.size)}</div>
+        <div class="fitem-bar-wrap"><div class="fitem-bar" id="fb${idx}"></div></div>
+      </div>
+      <div class="fitem-pct" id="fp${idx}">待機</div>`;
+    $('fileList').appendChild(el);
+    log('追加: ' + f.name + ' (' + fmtSize(f.size) + ')');
+  });
+  updateSendBtn();
+}
+
+function updateSendBtn() {
+  const ready = conn && conn.open && queue.length > 0 && !sending;
+  $('sendBtn').disabled = !ready;
+}
+
+async function startSend() {
+  sending = true; updateSendBtn();
+  for (const { file, idx } of queue) {
+    await sendFile(file, idx);
+  }
+  sending = false; updateSendBtn();
+  log('✅ 全ファイル送信完了！', 'ok');
+}
+
+function sendFile(file, idx) {
+  return new Promise(async resolve => {
+    const pctEl = $('fp' + idx);
+    const barEl = $('fb' + idx);
+    pctEl.textContent = '0%';
+    pctEl.className = 'fitem-pct live';
+
+    const buf = await file.arrayBuffer();
+    const total = buf.byteLength;
+
+    // Send metadata header
+    conn.send(JSON.stringify({ cmd:'meta', name: file.name, size: file.size, type: file.type || 'application/octet-stream' }));
+    log('送信開始: ' + file.name + ' (' + fmtSize(file.size) + ')');
+
+    let offset = 0;
+
+    function pump() {
+      // Respect PeerJS buffer (avoid flooding)
+      while (offset < total) {
+        const end   = Math.min(offset + CHUNK, total);
+        const slice = buf.slice(offset, end);
+        conn.send(slice);
+        offset = end;
+        const pct = Math.round(offset / total * 100);
+        barEl.style.width = pct + '%';
+        pctEl.textContent  = pct + '%';
+
+        // Yield every 4 chunks to keep UI responsive
+        if (offset < total && (offset / CHUNK) % 4 === 0) {
+          setTimeout(pump, 0);
+          return;
+        }
+      }
+      // Done
+      conn.send(JSON.stringify({ cmd:'end', name: file.name }));
+      pctEl.textContent = '完了 ✓';
+      pctEl.className   = 'fitem-pct done';
+      log('完了: ' + file.name, 'ok');
+      resolve();
+    }
+    pump();
+  });
+}
+
+// ═══════════════════════════════════════════════════════
+//  RECEIVER
+// ═══════════════════════════════════════════════════════
+let recvCount = 0;
+let curMeta   = null;
+let chunks    = [];
+let recvBytes = 0;
+
+function initReceiver() {
+  document.title = 'LocalBeam — 受信モード';
+  $('senderUI').style.display = 'none';
+  $('receiverUI').style.display = 'block';
+  setStatus('接続中…');
+
+  if (!HOST_ID) {
+    $('recvSub').textContent = 'URLが無効です（idパラメータが見つかりません）';
+    setStatus('エラー', 'err');
+    return;
+  }
+
+  const peer = new Peer({ debug: 0 });
+
+  peer.on('open', myId => {
+    $('recvSub').textContent = 'PCへ接続中…';
+    const c = peer.connect(HOST_ID, { reliable: true });
+
+    c.on('open', () => {
+      $('recvSub').textContent = 'PCと接続しました ✓';
+      setStatus('接続済み', 'ok');
+    });
+
+    c.on('data', d => handleData(d));
+    c.on('close', () => {
+      $('recvSub').textContent = '接続が切断されました';
+      setStatus('切断');
+    });
+    c.on('error', e => {
+      $('recvSub').textContent = 'エラー: ' + e;
+      setStatus('エラー', 'err');
+    });
+  });
+
+  peer.on('error', e => {
+    $('recvSub').textContent = 'エラー: ' + e.type;
+    setStatus('エラー', 'err');
+  });
+}
+
+function handleData(d) {
+  if (typeof d === 'string') {
+    const msg = JSON.parse(d);
+    if (msg.cmd === 'meta') {
+      curMeta   = msg;
+      chunks    = [];
+      recvBytes = 0;
+      $('recvIncoming').classList.remove('hidden');
+      $('recvEmpty').classList.add('hidden');
+      $('inName').textContent = msg.name;
+      $('inPct').textContent  = '0%';
+      $('inFill').style.width = '0%';
+    } else if (msg.cmd === 'end') {
+      // Assemble blob and create download link
+      const blob = new Blob(chunks, { type: curMeta.type });
+      const url  = URL.createObjectURL(blob);
+      addDownload(curMeta.name, blob.size, url);
+      $('recvIncoming').classList.add('hidden');
+      curMeta = null; chunks = []; recvBytes = 0;
+    }
+  } else {
+    // Binary chunk (ArrayBuffer)
+    chunks.push(d);
+    recvBytes += d.byteLength;
+    if (curMeta) {
+      const pct = Math.round(recvBytes / curMeta.size * 100);
+      $('inFill').style.width = pct + '%';
+      $('inPct').textContent  = pct + '%';
+    }
+  }
+}
+
+function addDownload(name, size, url) {
+  recvCount++;
+  $('recvCount').textContent = recvCount + ' 件';
+
+  const el = document.createElement('div');
+  el.className = 'dl-item';
+  el.innerHTML = `
+    <div class="dl-icon">${fileIcon(name)}</div>
+    <div class="dl-info">
+      <div class="dl-name">${name}</div>
+      <div class="dl-size">${fmtSize(size)}</div>
+    </div>
+    <a href="${url}" download="${name}" class="dl-btn">⬇ 保存</a>`;
+  $('dlList').prepend(el);
+}
+
+// ═══════════════════════════════════════════════════════
+//  Boot
+// ═══════════════════════════════════════════════════════
+IS_RECV ? initReceiver() : initSender();
+</script>
+</body>
+</html>
