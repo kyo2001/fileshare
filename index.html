@@ -362,6 +362,29 @@ header {
   .panel-body { padding: 1rem; }
   .recv-title { font-size: 1.4rem; }
 }
+
+.quest-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin-top: 0.75rem;
+  padding: 0.5rem 0.875rem;
+  background: var(--ink);
+  color: #fff;
+  border-radius: 7px;
+  font-family: var(--sans);
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-decoration: none;
+  border: none;
+  cursor: pointer;
+  transition: opacity 0.15s;
+  box-shadow: 2px 2px 0 rgba(26,23,16,0.25);
+}
+.quest-btn:hover { opacity: 0.85; }
+.quest-btn:active { transform: translate(1px,1px); box-shadow: 1px 1px 0 rgba(26,23,16,0.2); }
+.quest-btn-icon { font-size: 0.95rem; }  
+  
 </style>
 </head>
 <body>
@@ -400,6 +423,12 @@ header {
           <div class="qr-heading">QRコードを<br>スキャンして接続</div>
           <div class="qr-desc">スマホのカメラアプリでスキャンするだけ。<br>同じネットワーク不要 — どこからでも接続できます。</div>
           <div class="url-tag" id="urlTag">URL 生成中…</div>
+          <div>
+            <a id="questBtn" class="quest-btn hidden" target="_blank" rel="noopener">
+                <span class="quest-btn-icon">🥽</span>
+                <span>Quest で開く</span>
+            </a>
+          </div>          
           <div class="steps">
             <div class="step active" id="s1"><div class="step-n">1</div>QRをスキャン</div>
             <div class="step" id="s2"><div class="step-n">2</div>スマホ側でページが開く</div>
@@ -589,18 +618,18 @@ async function buildQR(peerId) {
   let qrUrl = longUrl;
 
   // TinyURLで短縮を試みる
-  try {
-    const res = await fetch('https://tinyurl.com/api-create.php?url=' + encodeURIComponent(longUrl));
-    if (res.ok) {
-      const short = await res.text();
-      if (short.startsWith('http')) {
-        qrUrl = short;
-        log('短縮URL: ' + short);
-      }
-    }
-  } catch (e) {
-    log('短縮失敗、元URLを使用', 'warn');
-  }
+  // try {
+  //   const res = await fetch('https://tinyurl.com/api-create.php?url=' + encodeURIComponent(longUrl));
+  //   if (res.ok) {
+  //     const short = await res.text();
+  //     if (short.startsWith('http')) {
+  //       qrUrl = short;
+  //       log('短縮URL: ' + short);
+  //     }
+  //   }
+  // } catch (e) {
+  //   log('短縮失敗、元URLを使用', 'warn');
+  // }
 
   $('urlTag').textContent = qrUrl;
   new QRCode('qrcode', { 
@@ -609,6 +638,9 @@ async function buildQR(peerId) {
     height: 160, 
     correctLevel: QRCode.CorrectLevel.H 
   });
+  const questBtn = $('questBtn');
+  questBtn.href = 'https://www.oculus.com/open_url/?url=' + encodeURIComponent(qrUrl);
+  questBtn.classList.remove('hidden');
   log('QR生成: ' + qrUrl);
 }
 
