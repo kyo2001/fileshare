@@ -293,12 +293,10 @@ header {
 .lm.err  { color: #e07060; }
 .lm.info { color: #c8c0b0; }
 
-/* ── Receiver ── */
-#receiverUI { display: none; }
-
+/* ── Peer header (receiver) ── */
 .recv-top {
   text-align: center;
-  padding: 2.5rem 0 2rem;
+  padding: 1rem 0 1.75rem;
 }
 .recv-emoji { font-size: 3.5rem; animation: float 3s ease-in-out infinite; display:block; margin-bottom:1rem; }
 @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-8px)} }
@@ -383,8 +381,8 @@ header {
 }
 .quest-btn:hover { opacity: 0.85; }
 .quest-btn:active { transform: translate(1px,1px); box-shadow: 1px 1px 0 rgba(26,23,16,0.2); }
-.quest-btn-icon { font-size: 0.95rem; }  
-  
+.quest-btn-icon { font-size: 0.95rem; }
+
 </style>
 </head>
 <body>
@@ -405,106 +403,96 @@ header {
   </div>
 </header>
 
-<!-- ════════════════════════════════
-     SENDER UI (PC / host side)
-════════════════════════════════ -->
-<div id="senderUI">
-
-  <!-- QR / connection panel -->
-  <div class="panel">
-    <div class="panel-head">
-      <span class="panel-label">📱 スマホ接続</span>
-      <span id="peerCount" style="font-family:var(--mono);font-size:0.72rem;color:var(--muted)">0 台接続中</span>
-    </div>
-    <div class="panel-body">
-      <div class="qr-layout">
-        <div class="qr-frame"><div id="qrcode"></div></div>
-        <div class="qr-side">
-          <div class="qr-heading">QRコードを<br>スキャンして接続</div>
-          <div class="qr-desc">スマホのカメラアプリでスキャンするだけ。<br>同じネットワーク不要 — どこからでも接続できます。</div>
-          <div class="url-tag" id="urlTag">URL 生成中…</div>
-          <div>
-            <a id="questBtn" class="quest-btn hidden" target="_blank" rel="noopener">
-                <span class="quest-btn-icon">🥽</span>
-                <span>Quest で開く</span>
-            </a>
-          </div>          
-          <div class="steps">
-            <div class="step active" id="s1"><div class="step-n">1</div>QRをスキャン</div>
-            <div class="step" id="s2"><div class="step-n">2</div>スマホ側でページが開く</div>
-            <div class="step" id="s3"><div class="step-n">3</div>ファイルを選んで送信</div>
-          </div>
+<!-- ── Connection panel (host only) ── -->
+<div class="panel" id="hostConnPanel">
+  <div class="panel-head">
+    <span class="panel-label">📱 スマホ接続</span>
+    <span id="peerCount" style="font-family:var(--mono);font-size:0.72rem;color:var(--muted)">0 台接続中</span>
+  </div>
+  <div class="panel-body">
+    <div class="qr-layout">
+      <div class="qr-frame"><div id="qrcode"></div></div>
+      <div class="qr-side">
+        <div class="qr-heading">QRコードを<br>スキャンして接続</div>
+        <div class="qr-desc">スマホのカメラアプリでスキャンするだけ。<br>同じネットワーク不要 — どこからでも接続できます。</div>
+        <div class="url-tag" id="urlTag">URL 生成中…</div>
+        <div>
+          <a id="questBtn" class="quest-btn hidden" target="_blank" rel="noopener">
+              <span class="quest-btn-icon">🥽</span>
+              <span>Quest で開く</span>
+          </a>
+        </div>
+        <div class="steps">
+          <div class="step active" id="s1"><div class="step-n">1</div>QRをスキャン</div>
+          <div class="step" id="s2"><div class="step-n">2</div>スマホ側でページが開く</div>
+          <div class="step" id="s3"><div class="step-n">3</div>双方向にファイル送受信</div>
         </div>
       </div>
     </div>
   </div>
+</div>
 
-  <!-- File drop panel -->
-  <div class="panel">
-    <div class="panel-head">
-      <span class="panel-label">📂 ファイル送信</span>
-      <span id="sendStatusLabel" style="font-family:var(--mono);font-size:0.72rem;color:var(--muted)">接続待ち</span>
-    </div>
-    <div class="panel-body">
-      <div class="drop-zone" id="dropZone">
-        <div class="drop-icon">🗂</div>
-        <div class="drop-main">ここにファイルをドロップ</div>
-        <div class="drop-hint">または クリックして選択 · 複数可</div>
-        <input type="file" id="fileInput" multiple>
-      </div>
-      <div class="file-list" id="fileList"></div>
-      <div class="btn-row">
-        <button class="btn btn-primary" id="sendBtn" disabled>⚡ 送信開始</button>
-        <button class="btn btn-ghost"   id="clearBtn">クリア</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Log panel -->
-  <div class="panel">
-    <div class="panel-head">
-      <span class="panel-label">🖥 ログ</span>
-      <button class="btn btn-ghost" style="padding:0.25rem 0.7rem;font-size:0.72rem" onclick="clearLog()">クリア</button>
-    </div>
-    <div class="panel-body" style="padding-top:0.5rem;padding-bottom:0.5rem">
-      <div class="log" id="logBox"></div>
-    </div>
-  </div>
-
-</div><!-- /senderUI -->
-
-<!-- ════════════════════════════════
-     RECEIVER UI (smartphone)
-════════════════════════════════ -->
-<div id="receiverUI">
+<!-- ── Peer header (receiver only) ── -->
+<div id="peerConnHeader" class="hidden">
   <div class="recv-top">
     <span class="recv-emoji">📲</span>
     <div class="recv-title">LocalBeam</div>
     <div class="recv-sub" id="recvSub">PCへ接続中…</div>
   </div>
+</div>
 
-  <div class="panel">
-    <div class="panel-head">
-      <span class="panel-label">📥 受信ファイル</span>
-      <span id="recvCount" style="font-family:var(--mono);font-size:0.72rem;color:var(--muted)">0 件</span>
+<!-- ── File send panel (both sides) ── -->
+<div class="panel">
+  <div class="panel-head">
+    <span class="panel-label">📂 ファイル送信</span>
+    <span id="sendStatusLabel" style="font-family:var(--mono);font-size:0.72rem;color:var(--muted)">接続待ち</span>
+  </div>
+  <div class="panel-body">
+    <div class="drop-zone" id="dropZone">
+      <div class="drop-icon">🗂</div>
+      <div class="drop-main">ここにファイルをドロップ</div>
+      <div class="drop-hint">または タップして選択 · 複数可</div>
+      <input type="file" id="fileInput" multiple>
     </div>
-    <div class="panel-body">
-      <!-- Progress bar for incoming file -->
-      <div id="recvIncoming" class="hidden">
-        <div class="recv-incoming">
-          <div class="recv-in-head">
-            <span class="recv-in-name" id="inName">受信中…</span>
-            <span class="recv-in-pct"  id="inPct">0%</span>
-          </div>
-          <div class="recv-in-bar"><div class="recv-in-fill" id="inFill"></div></div>
-        </div>
-      </div>
-      <!-- Completed downloads -->
-      <div class="dl-list" id="dlList"></div>
-      <div class="empty-hint" id="recvEmpty">PCからファイルが届くとここに表示されます</div>
+    <div class="file-list" id="fileList"></div>
+    <div class="btn-row">
+      <button class="btn btn-primary" id="sendBtn" disabled>⚡ 送信開始</button>
+      <button class="btn btn-ghost"   id="clearBtn">クリア</button>
     </div>
   </div>
-</div><!-- /receiverUI -->
+</div>
+
+<!-- ── File receive panel (both sides) ── -->
+<div class="panel">
+  <div class="panel-head">
+    <span class="panel-label">📥 受信ファイル</span>
+    <span id="recvCount" style="font-family:var(--mono);font-size:0.72rem;color:var(--muted)">0 件</span>
+  </div>
+  <div class="panel-body">
+    <div id="recvIncoming" class="hidden">
+      <div class="recv-incoming">
+        <div class="recv-in-head">
+          <span class="recv-in-name" id="inName">受信中…</span>
+          <span class="recv-in-pct"  id="inPct">0%</span>
+        </div>
+        <div class="recv-in-bar"><div class="recv-in-fill" id="inFill"></div></div>
+      </div>
+    </div>
+    <div class="dl-list" id="dlList"></div>
+    <div class="empty-hint" id="recvEmpty">受信したファイルはここに表示されます</div>
+  </div>
+</div>
+
+<!-- ── Log panel (both sides) ── -->
+<div class="panel">
+  <div class="panel-head">
+    <span class="panel-label">🖥 ログ</span>
+    <button class="btn btn-ghost" style="padding:0.25rem 0.7rem;font-size:0.72rem" onclick="clearLog()">クリア</button>
+  </div>
+  <div class="panel-body" style="padding-top:0.5rem;padding-bottom:0.5rem">
+    <div class="log" id="logBox"></div>
+  </div>
+</div>
 
 </div><!-- /wrap -->
 
@@ -543,11 +531,7 @@ function setStatus(txt, type='') {
   $('statusBadge').className = 'badge' + (type ? ' ' + type : '');
 }
 
-// ═══════════════════════════════════════════════════════
-//  Log (sender only)
-// ═══════════════════════════════════════════════════════
 function log(msg, kind='info') {
-  if (IS_RECV) return;
   const t = new Date().toLocaleTimeString('ja-JP');
   const row = document.createElement('div');
   row.className = 'log-row';
@@ -557,17 +541,68 @@ function log(msg, kind='info') {
 }
 function clearLog() { $('logBox').innerHTML = ''; }
 
+function stepDone(id)   { $(id).className = 'step done';   $(id).querySelector('.step-n').textContent = '✓'; }
+function stepActive(id) { $(id).className = 'step active'; }
+
 // ═══════════════════════════════════════════════════════
-//  SENDER
+//  Shared state
 // ═══════════════════════════════════════════════════════
 let peer, conn;
-let queue = []; // {file, domIdx}
+
+// Send-side state
+let queue = [];      // {file, idx}
 let sending = false;
 
-function initSender() {
-  $('senderUI').style.display = 'block';
+// Receive-side state
+let recvCount = 0;
+let curMeta   = null;
+let chunks    = [];
+let recvBytes = 0;
+
+// ═══════════════════════════════════════════════════════
+//  Connection setup (shared by host + peer)
+// ═══════════════════════════════════════════════════════
+function setupConnection(c) {
+  conn = c;
+
+  c.on('open', () => {
+    setStatus('接続済み', 'ok');
+    $('sendStatusLabel').textContent = '転送可能';
+    if (IS_RECV) {
+      $('recvSub').textContent = 'PCと接続しました ✓';
+      log('PCに接続しました', 'ok');
+    } else {
+      $('peerCount').textContent = '1 台接続中';
+      stepDone('s1'); stepDone('s2'); stepActive('s3');
+      log('スマホが接続しました！', 'ok');
+    }
+    updateSendBtn();
+  });
+
+  c.on('data', handleData);
+
+  c.on('close', () => {
+    log('接続が切断されました', 'warn');
+    setStatus('切断');
+    $('sendStatusLabel').textContent = '接続待ち';
+    if (IS_RECV) {
+      $('recvSub').textContent = '接続が切断されました';
+    } else {
+      $('peerCount').textContent = '0 台接続中';
+    }
+    conn = null;
+    updateSendBtn();
+  });
+
+  c.on('error', e => log('接続エラー: ' + e, 'err'));
+}
+
+// ═══════════════════════════════════════════════════════
+//  HOST mode (PC, shows QR, accepts incoming connection)
+// ═══════════════════════════════════════════════════════
+function initHost() {
   setStatus('PeerJS 初期化中…');
-  log('送信モードで起動');
+  log('ホストとして起動');
 
   peer = new Peer({ debug: 0 });
 
@@ -582,61 +617,21 @@ function initSender() {
     setStatus('エラー: ' + e.type, 'err');
   });
 
-  peer.on('connection', incoming => {
-    conn = incoming;
-    conn.on('open', () => {
-      log('スマホが接続しました！', 'ok');
-      setStatus('接続済み', 'ok');
-      $('peerCount').textContent = '1 台接続中';
-      $('sendStatusLabel').textContent = '転送可能';
-      stepDone('s1'); stepDone('s2'); stepActive('s3');
-      updateSendBtn();
-    });
-    conn.on('close', () => {
-      log('接続が切断されました', 'warn');
-      setStatus('切断');
-      $('peerCount').textContent = '0 台接続中';
-      $('sendStatusLabel').textContent = '接続待ち';
-      updateSendBtn();
-    });
-    conn.on('error', e => log('接続エラー: ' + e, 'err'));
-  });
+  peer.on('connection', incoming => setupConnection(incoming));
 
-  // Drop zone
-  const dz = $('dropZone');
-  dz.addEventListener('click', () => $('fileInput').click());
-  dz.addEventListener('dragover',  e => { e.preventDefault(); dz.classList.add('over'); });
-  dz.addEventListener('dragleave', () => dz.classList.remove('over'));
-  dz.addEventListener('drop', e => { e.preventDefault(); dz.classList.remove('over'); addFiles([...e.dataTransfer.files]); });
-  $('fileInput').addEventListener('change', e => addFiles([...e.target.files]));
-  $('sendBtn').addEventListener('click', startSend);
-  $('clearBtn').addEventListener('click', () => { queue = []; $('fileList').innerHTML = ''; updateSendBtn(); log('リストをクリア'); });
+  initFileUI();
 }
 
 async function buildQR(peerId) {
   const longUrl = location.origin + location.pathname + '?recv&id=' + peerId;
-  let qrUrl = longUrl;
-
-  // TinyURLで短縮を試みる
-  // try {
-  //   const res = await fetch('https://tinyurl.com/api-create.php?url=' + encodeURIComponent(longUrl));
-  //   if (res.ok) {
-  //     const short = await res.text();
-  //     if (short.startsWith('http')) {
-  //       qrUrl = short;
-  //       log('短縮URL: ' + short);
-  //     }
-  //   }
-  // } catch (e) {
-  //   log('短縮失敗、元URLを使用', 'warn');
-  // }
+  const qrUrl = longUrl;
 
   $('urlTag').textContent = qrUrl;
-  new QRCode('qrcode', { 
-    text: qrUrl, 
-    width: 160, 
-    height: 160, 
-    correctLevel: QRCode.CorrectLevel.H 
+  new QRCode('qrcode', {
+    text: qrUrl,
+    width: 160,
+    height: 160,
+    correctLevel: QRCode.CorrectLevel.H
   });
   const questBtn = $('questBtn');
   questBtn.href = 'https://www.oculus.com/open_url/?url=' + encodeURIComponent(qrUrl);
@@ -644,8 +639,59 @@ async function buildQR(peerId) {
   log('QR生成: ' + qrUrl);
 }
 
-function stepDone(id)   { $(id).className = 'step done';   $(id).querySelector('.step-n').textContent = '✓'; }
-function stepActive(id) { $(id).className = 'step active'; }
+// ═══════════════════════════════════════════════════════
+//  PEER mode (smartphone / Quest, dials host)
+// ═══════════════════════════════════════════════════════
+function initPeer() {
+  document.title = 'LocalBeam — ピア';
+  $('hostConnPanel').classList.add('hidden');
+  $('peerConnHeader').classList.remove('hidden');
+  setStatus('接続中…');
+  log('ピアとして起動');
+
+  if (!HOST_ID) {
+    $('recvSub').textContent = 'URLが無効です（idパラメータが見つかりません）';
+    setStatus('エラー', 'err');
+    log('idパラメータが見つかりません', 'err');
+    return;
+  }
+
+  peer = new Peer({ debug: 0 });
+
+  peer.on('open', () => {
+    $('recvSub').textContent = 'PCへ接続中…';
+    log('Peer ID 取得、ホストへ接続中');
+    const c = peer.connect(HOST_ID, { reliable: true });
+    setupConnection(c);
+  });
+
+  peer.on('error', e => {
+    $('recvSub').textContent = 'エラー: ' + e.type;
+    setStatus('エラー', 'err');
+    log('PeerJS エラー: ' + e.type, 'err');
+  });
+
+  initFileUI();
+}
+
+// ═══════════════════════════════════════════════════════
+//  Shared file send UI (used on both host and peer)
+// ═══════════════════════════════════════════════════════
+function initFileUI() {
+  const dz = $('dropZone');
+  dz.addEventListener('click', () => $('fileInput').click());
+  dz.addEventListener('dragover',  e => { e.preventDefault(); dz.classList.add('over'); });
+  dz.addEventListener('dragleave', () => dz.classList.remove('over'));
+  dz.addEventListener('drop', e => { e.preventDefault(); dz.classList.remove('over'); addFiles([...e.dataTransfer.files]); });
+  $('fileInput').addEventListener('change', e => addFiles([...e.target.files]));
+  $('sendBtn').addEventListener('click', startSend);
+  $('clearBtn').addEventListener('click', () => {
+    queue = [];
+    $('fileList').innerHTML = '';
+    updateSendBtn();
+    log('リストをクリア');
+  });
+}
 
 function addFiles(files) {
   files.forEach(f => {
@@ -677,10 +723,14 @@ function updateSendBtn() {
 async function startSend() {
   sending = true; updateSendBtn();
   for (const { file, idx } of queue) {
+    if (!conn || !conn.open) {
+      log('接続が切れています、送信中断', 'err');
+      break;
+    }
     await sendFile(file, idx);
   }
   sending = false; updateSendBtn();
-  log('✅ 全ファイル送信完了！', 'ok');
+  log('✅ 送信処理完了', 'ok');
 }
 
 function sendFile(file, idx) {
@@ -693,14 +743,12 @@ function sendFile(file, idx) {
     const buf = await file.arrayBuffer();
     const total = buf.byteLength;
 
-    // Send metadata header
     conn.send(JSON.stringify({ cmd:'meta', name: file.name, size: file.size, type: file.type || 'application/octet-stream' }));
     log('送信開始: ' + file.name + ' (' + fmtSize(file.size) + ')');
 
     let offset = 0;
 
     function pump() {
-      // Respect PeerJS buffer (avoid flooding)
       while (offset < total) {
         const end   = Math.min(offset + CHUNK, total);
         const slice = buf.slice(offset, end);
@@ -710,13 +758,11 @@ function sendFile(file, idx) {
         barEl.style.width = pct + '%';
         pctEl.textContent  = pct + '%';
 
-        // Yield every 4 chunks to keep UI responsive
         if (offset < total && (offset / CHUNK) % 4 === 0) {
           setTimeout(pump, 0);
           return;
         }
       }
-      // Done
       conn.send(JSON.stringify({ cmd:'end', name: file.name }));
       pctEl.textContent = '完了 ✓';
       pctEl.className   = 'fitem-pct done';
@@ -728,53 +774,8 @@ function sendFile(file, idx) {
 }
 
 // ═══════════════════════════════════════════════════════
-//  RECEIVER
+//  Shared receive logic (used on both host and peer)
 // ═══════════════════════════════════════════════════════
-let recvCount = 0;
-let curMeta   = null;
-let chunks    = [];
-let recvBytes = 0;
-
-function initReceiver() {
-  document.title = 'LocalBeam — 受信モード';
-  $('senderUI').style.display = 'none';
-  $('receiverUI').style.display = 'block';
-  setStatus('接続中…');
-
-  if (!HOST_ID) {
-    $('recvSub').textContent = 'URLが無効です（idパラメータが見つかりません）';
-    setStatus('エラー', 'err');
-    return;
-  }
-
-  const peer = new Peer({ debug: 0 });
-
-  peer.on('open', myId => {
-    $('recvSub').textContent = 'PCへ接続中…';
-    const c = peer.connect(HOST_ID, { reliable: true });
-
-    c.on('open', () => {
-      $('recvSub').textContent = 'PCと接続しました ✓';
-      setStatus('接続済み', 'ok');
-    });
-
-    c.on('data', d => handleData(d));
-    c.on('close', () => {
-      $('recvSub').textContent = '接続が切断されました';
-      setStatus('切断');
-    });
-    c.on('error', e => {
-      $('recvSub').textContent = 'エラー: ' + e;
-      setStatus('エラー', 'err');
-    });
-  });
-
-  peer.on('error', e => {
-    $('recvSub').textContent = 'エラー: ' + e.type;
-    setStatus('エラー', 'err');
-  });
-}
-
 function handleData(d) {
   if (typeof d === 'string') {
     const msg = JSON.parse(d);
@@ -787,16 +788,16 @@ function handleData(d) {
       $('inName').textContent = msg.name;
       $('inPct').textContent  = '0%';
       $('inFill').style.width = '0%';
+      log('受信開始: ' + msg.name + ' (' + fmtSize(msg.size) + ')');
     } else if (msg.cmd === 'end') {
-      // Assemble blob and create download link
       const blob = new Blob(chunks, { type: curMeta.type });
       const url  = URL.createObjectURL(blob);
       addDownload(curMeta.name, blob.size, url);
       $('recvIncoming').classList.add('hidden');
+      log('受信完了: ' + curMeta.name, 'ok');
       curMeta = null; chunks = []; recvBytes = 0;
     }
   } else {
-    // Binary chunk (ArrayBuffer)
     chunks.push(d);
     recvBytes += d.byteLength;
     if (curMeta) {
@@ -810,6 +811,7 @@ function handleData(d) {
 function addDownload(name, size, url) {
   recvCount++;
   $('recvCount').textContent = recvCount + ' 件';
+  $('recvEmpty').classList.add('hidden');
 
   const el = document.createElement('div');
   el.className = 'dl-item';
@@ -826,7 +828,7 @@ function addDownload(name, size, url) {
 // ═══════════════════════════════════════════════════════
 //  Boot
 // ═══════════════════════════════════════════════════════
-IS_RECV ? initReceiver() : initSender();
+IS_RECV ? initPeer() : initHost();
 </script>
 </body>
 </html>
